@@ -1,0 +1,10 @@
+streamlit
+sentence-transformers
+mysql-connector-python
+pandas
+spacy
+rapidfuzz
+nltk
+thefuzz
+python-Levenshtein
+numpy
