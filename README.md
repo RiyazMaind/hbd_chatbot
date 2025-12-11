@@ -1,72 +1,113 @@
-## Project Overview
+# Local Business Assistant (LLM + Semantic Search + MySQL)
 
-This project provides an AI-driven semantic search interface for a local business database. The system converts natural language queries into structured search against a MySQL database.
+This project is an intelligent assistant that understands natural language queries and returns accurate business results from a MySQL database. It runs entirely offline using a local LLM (Phi-3 Mini GGUF) and includes semantic search, fuzzy correction, city detection, and a Streamlit chat interface.
 
-Example queries:
+The system automatically decides whether a query needs:
 
-- best seo service in chirala
-- biryani restaurants in chirala
-- cheap hostel near me
-- seo agency chiral
+1. A normal LLM explanation (example: "What is SEO")
+2. A business lookup in MySQL (example: "best biryani in chirala")
 
-The system understands user intent even with spelling mistakes and partial text. It extracts relevant business categories, subcategories and city names, and generates SQL queries dynamically.
+The system does not rely on keyword rules. Instead, it uses:
 
-The application uses:
-
-- Sentence Transformers for semantic similarity
-- RapidFuzz for spelling correction
-- Streamlit for the user interface
-- MySQL for structured data storage
+- A local LLM classifier
+- Semantic embeddings for categories and subcategories
+- Fuzzy matching for city detection
+- SQL scoring based on reviews ranking
 
 ---
 
 ## Features
 
-1. Semantic understanding of user queries
-   The model identifies the closest matching category and subcategory from the database.
+### Natural Language Understanding
 
-2. Spelling correction
-   Misspelled words like "sercvice" or "chiral" are corrected using fuzzy matching.
+- Understands queries written in casual style
+- Automatically detects user intent (definition vs business search)
+- Corrects spelling mistakes before processing
 
-3. City detection
-   Cities present in user input are recognized using fuzzy similarity.
+### Semantic Search
 
-4. Automatic SQL generation
-   SQL queries are formed based on detected category, subcategory and city.
+- Embedding-based similarity detection for categories and subcategories
+- Weighted semantic scoring to determine best business match
 
-5. Pagination
-   Page 1 shows main category results.
-   Page 2 shows subcategory results.
-   Following pages show results from similar categories.
+### Local LLM
 
-6. Duplicate removal
-   Duplicate business records are removed using name and address.
+- Uses Phi-3 Mini 4K Instruct (GGUF)
+- Fully CPU compatible
+- No internet required
 
-7. Full business card view
-   Business entries show name, address, phone number, website, ratings, reviews, category, subcategory, location and creation date.
+### Database Integration
 
-8. CPU friendly
-   Works locally without GPU.
+- MySQL business listings table
+- SQL ranking using review-based scoring
+- Top 5 business results returned for each query
+
+### Streamlit Chat UI
+
+- User-friendly chat interface
+- Business cards with ratings, address, and category
+- History preserved in session
 
 ---
 
 ## Project Structure
 
 ```
-semantic_search/
-│
-├── app.py                  Streamlit UI
-├── search_engine.py        Semantic logic and SQL generation
-├── utils.py                Text normalization utilities
-├── db_config.py            MySQL connection setup
-├── requirements.txt        Python package list
+ChatBot/
+    agent.py
+    app.py
+    streamlit_app.py
+    search_engine.py
+    tools.py
+    db_config.py
+    utils.py
+    requirements.txt
+    .gitignore
+    models/
+        phi-3-mini-4k-instruct-q4.gguf
 ```
 
 ---
 
-## Requirements
+## How It Works
 
-Python 3.9 or above is recommended.
+### 1. Intent Detection
+
+Every query is classified using a local LLM:
+
+- If the intent is to find a business, the system switches to SQL mode.
+- If the intent is educational, the system generates a short explanation.
+
+### 2. Semantic Interpretation
+
+The query is normalized and encoded using a sentence transformer model.
+The system identifies:
+
+- Best category
+- Best subcategory
+- City
+- Confidence score
+
+### 3. SQL Execution
+
+For business queries, SQL is generated dynamically:
+
+- Filters based on category
+- Filters by city if detected
+- Ranks results using `(rating * log(reviews))`
+- Returns top 5 businesses
+
+### 4. Streamlit UI
+
+The interface displays:
+
+- User queries
+- Assistant replies
+- Business cards
+- Search history
+
+---
+
+## Requirements
 
 Install dependencies:
 
@@ -74,80 +115,90 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-The project uses the following libraries:
+Required software:
 
-- sentence-transformers
-- rapidfuzz
-- pandas
-- numpy
-- scikit-learn
-- mysql-connector-python
-- streamlit
+- Python 3.10 or newer
+- MySQL server
+- SentenceTransformers
+- GPT4All
+- Streamlit
+- FastAPI + Uvicorn
 
----
-
-## Database Setup
-
-Create a MySQL database named `maps_scraper_db` and a table named `google_maps_listings`.
-
-Required columns:
+Place the LLM model inside:
 
 ```
-id
-name
-address
-website
-phone_number
-reviews_count
-reviews_average
-category
-subcategory
-city
-state
-area
-created_at
-```
-
-Import your data into this table.
-
-Update the database credentials in `db_config.py`.
-
-```
-host="localhost"
-user="root"
-password="YOUR_PASSWORD"
-database="maps_scraper_db"
+models/phi-3-mini-4k-instruct-q4.gguf
 ```
 
 ---
 
-## How It Works
+## Environment Variables
 
-1. User enters a query in natural language.
-2. Text is normalized and corrected using fuzzy matching.
-3. The model embeds the query and compares it with known categories and subcategories stored in the database.
-4. Based on similarity scores, it selects the primary category and subcategory.
-5. A SQL query is generated using these terms, including city if detected.
-6. Results are fetched, sorted and displayed with pagination.
-7. Similar categories are used for further pages when available.
+Create a `.env` file:
+
+```
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=google_maps
+```
+
+Never upload `.env` to GitHub.
 
 ---
 
-## Running the Application
-
-Start the Streamlit app:
+## Running the Backend (FastAPI)
 
 ```
-streamlit run app.py
+uvicorn app:app --reload
 ```
 
-This opens the user interface in your web browser.
-Enter queries in the search box to fetch results.
+API will run at:
+
+```
+http://127.0.0.1:8000/chat
+```
+
+---
+
+## Running the Streamlit App
+
+```
+streamlit run streamlit_app.py
+```
+
+The interface opens automatically.
+
+---
+
+## Database Structure
+
+The SQL engine expects a table:
+
+```
+google_maps_listings
+```
+
+With fields including:
+
+- id
+- name
+- address
+- phone_number
+- website
+- reviews_count
+- reviews_average
+- category
+- subcategory
+- city
+- state
+- area
+- created_at
 
 ---
 
 ## Notes
 
-- The system relies on the quality of category and subcategory values present in the database.
-- Spelling correction depends on existing category, subcategory and city names.
-- For best results, ensure consistency in category naming in the database.
+- This system does not require any external API or cloud inference.
+- All processing is offline.
+- The system is optimized for speed and relevance on CPU.
