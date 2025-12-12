@@ -1,4 +1,3 @@
-# app.py
 from fastapi import FastAPI
 from pydantic import BaseModel
 from agent import Agent
@@ -11,8 +10,14 @@ class Query(BaseModel):
 
 @app.post("/chat")
 def chat(q: Query):
+    """
+    Main chat endpoint to process a user query.
+    """
     return agent.chat(q.query)
 
 @app.get("/")
 def home():
-    return {"status": "running"}
+    """
+    Health check endpoint.
+    """
+    return {"status": "running", "model_loaded": bool(agent.model)}
